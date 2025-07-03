@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, Clock, Calendar, Truck, User, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Calendar, Truck, User, MessageSquare, Mail } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -28,6 +27,7 @@ const ApprovalDashboard = () => {
   const [scheduleRequests, setScheduleRequests] = useState<ScheduleRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     fetchScheduleRequests();
@@ -54,6 +54,43 @@ const ApprovalDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendApprovalEmail = async (scheduleId: string, status: 'approved' | 'rejected', rejectionReason?: string) => {
+    try {
+      setSendingEmail(scheduleId);
+      
+      console.log('Sending email for schedule:', scheduleId, 'with status:', status);
+      
+      const { data, error } = await supabase.functions.invoke('send-approval-email', {
+        body: {
+          scheduleId,
+          status,
+          rejectionReason
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Email sent successfully:', data);
+      
+      toast({
+        title: "📧 Email enviado!",
+        description: "O usuário foi notificado por email sobre a decisão.",
+        variant: "default"
+      });
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Erro ao enviar email",
+        description: "A decisão foi salva, mas houve problema no envio do email.",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingEmail(null);
     }
   };
 
@@ -92,6 +129,9 @@ const ApprovalDashboard = () => {
         description: `O agendamento foi ${action} com sucesso.`,
         variant: status === 'approved' ? 'default' : 'destructive'
       });
+
+      // Enviar email automaticamente
+      await sendApprovalEmail(id, status, reason);
 
       setRejectionReason('');
     } catch (error: any) {
@@ -253,9 +293,11 @@ const ApprovalDashboard = () => {
                     <Button 
                       onClick={() => handleApproval(request.id, 'approved')}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      disabled={sendingEmail === request.id}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Aprovar
+                      {sendingEmail === request.id ? 'Enviando...' : 'Aprovar'}
+                      {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
                     </Button>
                     
                     <Dialog>
@@ -263,6 +305,7 @@ const ApprovalDashboard = () => {
                         <Button 
                           variant="outline" 
                           className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                          disabled={sendingEmail === request.id}
                         >
                           <XCircle className="h-4 w-4 mr-2" />
                           Rejeitar
@@ -284,8 +327,11 @@ const ApprovalDashboard = () => {
                             <Button 
                               onClick={() => handleApproval(request.id, 'rejected', rejectionReason)}
                               className="bg-red-600 hover:bg-red-700 text-white"
+                              disabled={sendingEmail === request.id || !rejectionReason.trim()}
                             >
-                              Confirmar Rejeição
+                              <XCircle className="h-4 w-4 mr-2" />
+                              {sendingEmail === request.id ? 'Enviando...' : 'Confirmar Rejeição'}
+                              {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
                             </Button>
                           </div>
                         </div>
