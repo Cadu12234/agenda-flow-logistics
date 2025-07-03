@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,13 +22,92 @@ const SchedulingSystem = () => {
   const [deliveryType, setDeliveryType] = useState<string>("");
   const [observations, setObservations] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
   const { user } = useAuth();
 
-  const availableTimes = [
+  const allTimes = [
     "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
     "11:00", "11:30", "13:00", "13:30", "14:00", "14:30",
     "15:00", "15:30", "16:00", "16:30", "17:00"
   ];
+
+  const fetchAvailableTimes = async (date: Date) => {
+    setLoadingTimes(true);
+    try {
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      
+      // Buscar agendamentos aprovados para a data selecionada
+      const { data: existingSchedules, error } = await supabase
+        .from('schedules')
+        .select('scheduled_time')
+        .eq('scheduled_date', formattedDate)
+        .eq('status', 'approved');
+
+      if (error) {
+        throw error;
+      }
+
+      // Extrair horários já ocupados
+      const occupiedTimes = existingSchedules?.map(schedule => schedule.scheduled_time) || [];
+      
+      // Filtrar horários disponíveis
+      const available = allTimes.filter(time => !occupiedTimes.includes(time));
+      
+      setAvailableTimes(available);
+      
+      // Se o horário selecionado não está mais disponível, limpar seleção
+      if (selectedTime && occupiedTimes.includes(selectedTime)) {
+        setSelectedTime("");
+      }
+    } catch (error: any) {
+      console.error('Error fetching available times:', error);
+      toast({
+        title: "Erro ao carregar horários",
+        description: "Não foi possível carregar os horários disponíveis.",
+        variant: "destructive"
+      });
+      // Em caso de erro, mostrar todos os horários
+      setAvailableTimes(allTimes);
+    } finally {
+      setLoadingTimes(false);
+    }
+  };
+
+  // Carregar horários disponíveis quando a data muda
+  useEffect(() => {
+    if (selectedDate) {
+      fetchAvailableTimes(selectedDate);
+    }
+  }, [selectedDate]);
+
+  // Configurar real-time para atualizar horários quando houver mudanças
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+    
+    const channel = supabase
+      .channel('schedules-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'schedules',
+          filter: `scheduled_date=eq.${formattedDate}`
+        },
+        () => {
+          // Recarregar horários disponíveis quando houver mudanças
+          fetchAvailableTimes(selectedDate);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDate]);
 
   const handleSchedule = async () => {
     if (!selectedDate || !selectedTime || !supplierName || !vehicleType || !deliveryType) {
@@ -152,18 +231,29 @@ const SchedulingSystem = () => {
                   <Clock className="h-4 w-4" />
                   Horário *
                 </Label>
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                <Select value={selectedTime} onValueChange={setSelectedTime} disabled={loadingTimes}>
                   <SelectTrigger className="border-gray-300 focus:border-green-500">
-                    <SelectValue placeholder="Selecione o horário" />
+                    <SelectValue placeholder={loadingTimes ? "Carregando horários..." : "Selecione o horário"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableTimes.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
+                    {availableTimes.length === 0 && !loadingTimes ? (
+                      <SelectItem value="" disabled>
+                        Nenhum horário disponível
                       </SelectItem>
-                    ))}
+                    ) : (
+                      availableTimes.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
+                {selectedDate && (
+                  <p className="text-sm text-gray-500">
+                    {availableTimes.length} horário(s) disponível(is) para {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -210,7 +300,7 @@ const SchedulingSystem = () => {
 
               <Button 
                 onClick={handleSchedule}
-                disabled={loading}
+                disabled={loading || availableTimes.length === 0}
                 className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
               >
                 {loading ? 'Enviando...' : 'Solicitar Agendamento'}
