@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ const SchedulingSystem = () => {
   const [observations, setObservations] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const { user } = useAuth();
 
@@ -55,6 +55,7 @@ const SchedulingSystem = () => {
       const available = allTimes.filter(time => !occupiedTimes.includes(time));
       
       setAvailableTimes(available);
+      setOccupiedTimes(occupiedTimes);
       
       // Se o horário selecionado não está mais disponível, limpar seleção
       if (selectedTime && occupiedTimes.includes(selectedTime)) {
@@ -69,6 +70,7 @@ const SchedulingSystem = () => {
       });
       // Em caso de erro, mostrar todos os horários
       setAvailableTimes(allTimes);
+      setOccupiedTimes([]);
     } finally {
       setLoadingTimes(false);
     }
@@ -171,6 +173,12 @@ const SchedulingSystem = () => {
     }
   };
 
+  const handleTimeSelect = (time: string) => {
+    if (availableTimes.includes(time)) {
+      setSelectedTime(time);
+    }
+  };
+
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-green-50">
       <div className="container mx-auto px-4">
@@ -184,22 +192,84 @@ const SchedulingSystem = () => {
         </div>
 
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8">
-          {/* Calendar Section */}
+          {/* Calendar and Time Selection Section */}
           <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
             <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5" />
-                Selecione a Data
+                Selecione a Data e Horário
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-6 space-y-6">
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 disabled={(date) => date < new Date()}
-                className="rounded-md border shadow-sm"
+                className="rounded-md border shadow-sm mx-auto"
               />
+              
+              {/* Time Grid */}
+              {selectedDate && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Horários para {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                    </h3>
+                    {loadingTimes && (
+                      <div className="text-sm text-gray-500">Carregando...</div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    {allTimes.map((time) => {
+                      const isAvailable = availableTimes.includes(time);
+                      const isSelected = selectedTime === time;
+                      const isOccupied = occupiedTimes.includes(time);
+                      
+                      return (
+                        <button
+                          key={time}
+                          onClick={() => handleTimeSelect(time)}
+                          disabled={!isAvailable || loadingTimes}
+                          className={`
+                            p-3 rounded-lg font-medium text-sm transition-all duration-200 border-2
+                            ${isSelected 
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105' 
+                              : isAvailable 
+                                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200 hover:border-green-400 hover:scale-105' 
+                                : 'bg-red-100 text-red-800 border-red-300 cursor-not-allowed opacity-75'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {time}
+                          </div>
+                          {isOccupied && (
+                            <div className="text-xs mt-1">Ocupado</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-100 border-2 border-green-300 rounded"></div>
+                      <span className="text-gray-600">Disponível</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-red-100 border-2 border-red-300 rounded"></div>
+                      <span className="text-gray-600">Ocupado</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-blue-600 border-2 border-blue-600 rounded"></div>
+                      <span className="text-gray-600">Selecionado</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -226,35 +296,19 @@ const SchedulingSystem = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Horário *
-                </Label>
-                <Select value={selectedTime} onValueChange={setSelectedTime} disabled={loadingTimes}>
-                  <SelectTrigger className="border-gray-300 focus:border-green-500">
-                    <SelectValue placeholder={loadingTimes ? "Carregando horários..." : "Selecione o horário"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTimes.length === 0 && !loadingTimes ? (
-                      <SelectItem value="" disabled>
-                        Nenhum horário disponível
-                      </SelectItem>
-                    ) : (
-                      availableTimes.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                {selectedDate && (
-                  <p className="text-sm text-gray-500">
-                    {availableTimes.length} horário(s) disponível(is) para {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
-                  </p>
-                )}
-              </div>
+              {selectedTime && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">
+                      Horário selecionado: {selectedTime}
+                    </span>
+                  </div>
+                  <div className="text-sm text-blue-600 mt-1">
+                    {selectedDate && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Tipo de Veículo *</Label>
@@ -300,7 +354,7 @@ const SchedulingSystem = () => {
 
               <Button 
                 onClick={handleSchedule}
-                disabled={loading || availableTimes.length === 0}
+                disabled={loading || !selectedTime || !supplierName || !vehicleType || !deliveryType}
                 className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
               >
                 {loading ? 'Enviando...' : 'Solicitar Agendamento'}
