@@ -4,9 +4,17 @@ import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
 import SchedulingSystem from '@/components/SchedulingSystem';
 import ApprovalDashboard from '@/components/ApprovalDashboard';
+import LoginForm from '@/components/LoginForm';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('home');
+  const { isAuthenticated, user } = useAuth();
+
+  // If not authenticated, show login form
+  if (!isAuthenticated) {
+    return <LoginForm />;
+  }
 
   const renderActiveSection = () => {
     switch (activeSection) {
@@ -15,7 +23,8 @@ const Index = () => {
       case 'schedule':
         return <SchedulingSystem />;
       case 'dashboard':
-        return <ApprovalDashboard />;
+        // Only admin users can access dashboard
+        return user?.isAdmin ? <ApprovalDashboard /> : <Hero />;
       default:
         return <Hero />;
     }

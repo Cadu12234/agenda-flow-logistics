@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Truck, Calendar, CheckCircle, Menu, X } from 'lucide-react';
+import { Truck, Calendar, CheckCircle, Menu, X, User, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavigationProps {
   activeSection: string;
@@ -10,12 +11,18 @@ interface NavigationProps {
 
 const Navigation = ({ activeSection, setActiveSection }: NavigationProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const navItems = [
     { id: 'home', label: 'Início', icon: Truck },
     { id: 'schedule', label: 'Agendar', icon: Calendar },
-    { id: 'dashboard', label: 'Painel', icon: CheckCircle },
+    ...(user?.isAdmin ? [{ id: 'dashboard', label: 'Painel', icon: CheckCircle }] : []),
   ];
+
+  const handleLogout = () => {
+    logout();
+    setActiveSection('home');
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-lg">
@@ -49,6 +56,25 @@ const Navigation = ({ activeSection, setActiveSection }: NavigationProps) => {
                 </Button>
               );
             })}
+            
+            {/* User Info */}
+            <div className="flex items-center space-x-2 ml-4 pl-4 border-l border-gray-300">
+              <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-lg">
+                <User className="h-4 w-4 text-gray-600" />
+                <span className="text-sm text-gray-700">{user?.email}</span>
+                {user?.isAdmin && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Admin</span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -87,6 +113,25 @@ const Navigation = ({ activeSection, setActiveSection }: NavigationProps) => {
                   </Button>
                 );
               })}
+              
+              {/* Mobile User Info */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg mb-2">
+                  <User className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm text-gray-700">{user?.email}</span>
+                  {user?.isAdmin && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Admin</span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={handleLogout}
+                  className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
             </div>
           </div>
         )}
