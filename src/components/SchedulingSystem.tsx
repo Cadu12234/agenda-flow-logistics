@@ -11,6 +11,8 @@ import { Calendar as CalendarIcon, Clock, Truck, User } from 'lucide-react';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SchedulingSystem = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -19,6 +21,8 @@ const SchedulingSystem = () => {
   const [vehicleType, setVehicleType] = useState<string>("");
   const [deliveryType, setDeliveryType] = useState<string>("");
   const [observations, setObservations] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const availableTimes = [
     "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -26,7 +30,7 @@ const SchedulingSystem = () => {
     "15:00", "15:30", "16:00", "16:30", "17:00"
   ];
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!selectedDate || !selectedTime || !supplierName || !vehicleType || !deliveryType) {
       toast({
         title: "Campos obrigatórios",
@@ -36,17 +40,56 @@ const SchedulingSystem = () => {
       return;
     }
 
-    toast({
-      title: "Agendamento solicitado!",
-      description: `Agendamento para ${format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} às ${selectedTime} enviado para aprovação.`,
-    });
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para agendar.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    // Reset form
-    setSelectedTime("");
-    setSupplierName("");
-    setVehicleType("");
-    setDeliveryType("");
-    setObservations("");
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .insert({
+          user_id: user.id,
+          supplier_name: supplierName,
+          scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
+          scheduled_time: selectedTime,
+          vehicle_type: vehicleType,
+          delivery_type: deliveryType,
+          observations: observations || null,
+          status: 'pending'
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Agendamento solicitado!",
+        description: `Agendamento para ${format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} às ${selectedTime} enviado para aprovação.`,
+      });
+
+      // Reset form
+      setSelectedTime("");
+      setSupplierName("");
+      setVehicleType("");
+      setDeliveryType("");
+      setObservations("");
+    } catch (error: any) {
+      console.error('Error creating schedule:', error);
+      toast({
+        title: "Erro ao agendar",
+        description: error.message || "Ocorreu um erro ao criar o agendamento.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -167,9 +210,10 @@ const SchedulingSystem = () => {
 
               <Button 
                 onClick={handleSchedule}
+                disabled={loading}
                 className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
               >
-                Solicitar Agendamento
+                {loading ? 'Enviando...' : 'Solicitar Agendamento'}
               </Button>
             </CardContent>
           </Card>

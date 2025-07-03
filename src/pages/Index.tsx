@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('home');
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, userProfile } = useAuth();
 
   // If not authenticated, show login form
   if (!isAuthenticated) {
@@ -24,7 +24,7 @@ const Index = () => {
         return <SchedulingSystem />;
       case 'dashboard':
         // Only admin users can access dashboard
-        return user?.isAdmin ? <ApprovalDashboard /> : <Hero />;
+        return userProfile?.is_admin ? <ApprovalDashboard /> : <Hero />;
       default:
         return <Hero />;
     }

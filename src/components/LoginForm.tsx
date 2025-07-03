@@ -13,6 +13,7 @@ const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [registrationSent, setRegistrationSent] = useState(false);
   const { login, register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,26 +31,39 @@ const LoginForm = () => {
     setLoading(true);
     
     try {
-      const success = isLogin ? await login(email, password) : await register(email, password);
-      
-      if (success) {
-        const isAdmin = email.endsWith('@mmm.com');
-        toast({
-          title: isLogin ? "Login realizado!" : "Cadastro realizado!",
-          description: isAdmin ? 
-            "Bem-vindo! Você tem acesso completo ao sistema." : 
-            "Bem-vindo! Você pode agendar entregas.",
-        });
+      if (isLogin) {
+        const { error } = await login(email, password);
+        
+        if (error) {
+          toast({
+            title: "Erro no login",
+            description: error.message || "Credenciais inválidas. Tente novamente.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Login realizado!",
+            description: "Bem-vindo ao sistema!",
+          });
+        }
       } else {
-        toast({
-          title: "Erro",
-          description: isLogin ? 
-            "Credenciais inválidas. Tente novamente." : 
-            "Este email já está cadastrado.",
-          variant: "destructive"
-        });
+        const { error } = await register(email, password);
+        
+        if (error) {
+          toast({
+            title: "Erro no cadastro",
+            description: error.message || "Erro ao criar conta.",
+            variant: "destructive"
+          });
+        } else {
+          setRegistrationSent(true);
+          toast({
+            title: "Cadastro realizado!",
+            description: "Verifique seu email para confirmar sua conta antes de fazer login.",
+          });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Erro",
         description: "Ocorreu um erro. Tente novamente.",
@@ -59,6 +73,45 @@ const LoginForm = () => {
       setLoading(false);
     }
   };
+
+  if (registrationSent) {
+    return (
+      <section className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-emerald-50 flex items-center justify-center p-4">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+          style={{
+            backgroundImage: `url('/lovable-uploads/71d3def1-1b00-4aac-aa00-f732b9b115a6.png')`
+          }}
+        />
+        
+        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm relative z-10">
+          <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-center justify-center">
+              <Mail className="h-5 w-5" />
+              Confirme seu Email
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent className="p-6 text-center">
+            <p className="mb-4">
+              Um link de confirmação foi enviado para seu email. 
+              Por favor, clique no link para ativar sua conta.
+            </p>
+            <Button
+              onClick={() => {
+                setRegistrationSent(false);
+                setIsLogin(true);
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              Voltar ao Login
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-emerald-50 flex items-center justify-center p-4">

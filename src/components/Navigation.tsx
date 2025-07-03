@@ -11,16 +11,16 @@ interface NavigationProps {
 
 const Navigation = ({ activeSection, setActiveSection }: NavigationProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { userProfile, logout } = useAuth();
 
   const navItems = [
     { id: 'home', label: 'Início', icon: Truck },
     { id: 'schedule', label: 'Agendar', icon: Calendar },
-    ...(user?.isAdmin ? [{ id: 'dashboard', label: 'Painel', icon: CheckCircle }] : []),
+    ...(userProfile?.is_admin ? [{ id: 'dashboard', label: 'Painel', icon: CheckCircle }] : []),
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setActiveSection('home');
   };
 
@@ -61,8 +61,8 @@ const Navigation = ({ activeSection, setActiveSection }: NavigationProps) => {
             <div className="flex items-center space-x-2 ml-4 pl-4 border-l border-gray-300">
               <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-lg">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm text-gray-700">{user?.email}</span>
-                {user?.isAdmin && (
+                <span className="text-sm text-gray-700">{userProfile?.email}</span>
+                {userProfile?.is_admin && (
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Admin</span>
                 )}
               </div>
@@ -118,8 +118,8 @@ const Navigation = ({ activeSection, setActiveSection }: NavigationProps) => {
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg mb-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">{user?.email}</span>
-                  {user?.isAdmin && (
+                  <span className="text-sm text-gray-700">{userProfile?.email}</span>
+                  {userProfile?.is_admin && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Admin</span>
                   )}
                 </div>

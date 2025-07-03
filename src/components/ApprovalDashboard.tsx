@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,75 +7,101 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, Clock, Calendar, Truck, User, MessageSquare } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface ScheduleRequest {
   id: string;
-  supplierName: string;
-  date: string;
-  time: string;
-  vehicleType: string;
-  deliveryType: string;
-  observations: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
+  supplier_name: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  vehicle_type: string;
+  delivery_type: string;
+  observations: string | null;
+  status: string;
+  created_at: string;
+  rejection_reason: string | null;
 }
 
 const ApprovalDashboard = () => {
-  const [scheduleRequests, setScheduleRequests] = useState<ScheduleRequest[]>([
-    {
-      id: '1',
-      supplierName: 'Transportadora ABC Ltda',
-      date: '2024-01-15',
-      time: '09:00',
-      vehicleType: 'Caminhão Médio',
-      deliveryType: 'Matérias-primas',
-      observations: 'Entrega de matéria-prima para produção. Produto frágil, manuseio cuidadoso.',
-      status: 'pending',
-      createdAt: '2024-01-10'
-    },
-    {
-      id: '2',
-      supplierName: 'Logística XYZ',
-      date: '2024-01-16',
-      time: '14:30',
-      vehicleType: 'Van',
-      deliveryType: 'Insumos',
-      observations: 'Entrega de insumos para o setor de embalagem.',
-      status: 'pending',
-      createdAt: '2024-01-11'
-    },
-    {
-      id: '3',
-      supplierName: 'Fornecedor Industrial',
-      date: '2024-01-17',
-      time: '10:15',
-      vehicleType: 'Carreta',
-      deliveryType: 'Equipamentos',
-      observations: 'Entrega de equipamento pesado. Necessário guindaste.',
-      status: 'approved',
-      createdAt: '2024-01-09'
-    }
-  ]);
-
+  const [scheduleRequests, setScheduleRequests] = useState<ScheduleRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const handleApproval = (id: string, status: 'approved' | 'rejected', reason?: string) => {
-    setScheduleRequests(prev => 
-      prev.map(request => 
-        request.id === id 
-          ? { ...request, status }
-          : request
-      )
-    );
+  useEffect(() => {
+    fetchScheduleRequests();
+  }, []);
 
-    const action = status === 'approved' ? 'aprovado' : 'rejeitado';
-    toast({
-      title: `Agendamento ${action}!`,
-      description: `O agendamento foi ${action} com sucesso.`,
-      variant: status === 'approved' ? 'default' : 'destructive'
-    });
+  const fetchScheduleRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    setRejectionReason('');
+      if (error) {
+        throw error;
+      }
+
+      setScheduleRequests(data || []);
+    } catch (error: any) {
+      console.error('Error fetching schedules:', error);
+      toast({
+        title: "Erro ao carregar agendamentos",
+        description: error.message || "Não foi possível carregar os agendamentos.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproval = async (id: string, status: 'approved' | 'rejected', reason?: string) => {
+    try {
+      const updateData: any = { 
+        status,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (status === 'rejected' && reason) {
+        updateData.rejection_reason = reason;
+      }
+
+      const { error } = await supabase
+        .from('schedules')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setScheduleRequests(prev => 
+        prev.map(request => 
+          request.id === id 
+            ? { ...request, status, rejection_reason: reason || null }
+            : request
+        )
+      );
+
+      const action = status === 'approved' ? 'aprovado' : 'rejeitado';
+      toast({
+        title: `Agendamento ${action}!`,
+        description: `O agendamento foi ${action} com sucesso.`,
+        variant: status === 'approved' ? 'default' : 'destructive'
+      });
+
+      setRejectionReason('');
+    } catch (error: any) {
+      console.error('Error updating schedule:', error);
+      toast({
+        title: "Erro ao atualizar agendamento",
+        description: error.message || "Não foi possível atualizar o agendamento.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -102,6 +128,16 @@ const ApprovalDashboard = () => {
 
   const pendingRequests = scheduleRequests.filter(req => req.status === 'pending');
   const processedRequests = scheduleRequests.filter(req => req.status !== 'pending');
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-gradient-to-br from-blue-50 to-gray-50">
+        <div className="container mx-auto px-4 text-center">
+          <p>Carregando agendamentos...</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-gradient-to-br from-blue-50 to-gray-50">
@@ -169,10 +205,10 @@ const ApprovalDashboard = () => {
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <User className="h-5 w-5" />
-                        {request.supplierName}
+                        {request.supplier_name}
                       </CardTitle>
                       <p className="text-sm text-gray-600 mt-1">
-                        Solicitado em: {new Date(request.createdAt).toLocaleDateString('pt-BR')}
+                        Solicitado em: {format(new Date(request.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                       </p>
                     </div>
                     {getStatusBadge(request.status)}
@@ -183,21 +219,21 @@ const ApprovalDashboard = () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <span className="font-medium">Data:</span>
-                      <span>{new Date(request.date).toLocaleDateString('pt-BR')}</span>
+                      <span>{format(new Date(request.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-500" />
                       <span className="font-medium">Horário:</span>
-                      <span>{request.time}</span>
+                      <span>{request.scheduled_time}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Truck className="h-4 w-4 text-gray-500" />
                       <span className="font-medium">Veículo:</span>
-                      <span>{request.vehicleType}</span>
+                      <span>{request.vehicle_type}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Tipo:</span>
-                      <span>{request.deliveryType}</span>
+                      <span>{request.delivery_type}</span>
                     </div>
                   </div>
                   
@@ -279,9 +315,9 @@ const ApprovalDashboard = () => {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <div>
-                        <p className="font-medium">{request.supplierName}</p>
+                        <p className="font-medium">{request.supplier_name}</p>
                         <p className="text-sm text-gray-600">
-                          {new Date(request.date).toLocaleDateString('pt-BR')} às {request.time}
+                          {format(new Date(request.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })} às {request.scheduled_time}
                         </p>
                       </div>
                     </div>

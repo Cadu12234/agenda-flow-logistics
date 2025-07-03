@@ -1,16 +1,21 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
-interface User {
+interface UserProfile {
+  id: string;
   email: string;
-  isAdmin: boolean;
+  is_admin: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  userProfile: UserProfile | null;
+  session: Session | null;
+  login: (email: string, password: string) => Promise<{ error?: any }>;
+  register: (email: string, password: string) => Promise<{ error?: any }>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -26,76 +31,78 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in on app start
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          // Fetch user profile
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profile) {
+              setUserProfile(profile);
+            }
+          }, 0);
+        } else {
+          setUserProfile(null);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      // Simulate API call - in real app, this would be an actual API call
-      const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-      const foundUser = users.find((u: any) => u.email === email && u.password === password);
-      
-      if (foundUser) {
-        const userData: User = {
-          email: foundUser.email,
-          isAdmin: foundUser.email.endsWith('@mmm.com')
-        };
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    }
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
   };
 
-  const register = async (email: string, password: string): Promise<boolean> => {
-    try {
-      // Simulate API call - in real app, this would be an actual API call
-      const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-      
-      // Check if user already exists
-      if (users.find((u: any) => u.email === email)) {
-        return false; // User already exists
+  const register = async (email: string, password: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl
       }
-      
-      // Add new user
-      users.push({ email, password });
-      localStorage.setItem('registeredUsers', JSON.stringify(users));
-      
-      // Auto login after registration
-      const userData: User = {
-        email,
-        isAdmin: email.endsWith('@mmm.com')
-      };
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return true;
-    } catch (error) {
-      console.error('Registration error:', error);
-      return false;
-    }
+    });
+    return { error };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   const value: AuthContextType = {
     user,
+    userProfile,
+    session,
     login,
     register,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!session
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
