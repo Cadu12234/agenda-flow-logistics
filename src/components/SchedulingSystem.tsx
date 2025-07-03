@@ -37,6 +37,8 @@ const SchedulingSystem = () => {
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
       
+      console.log('Fetching schedules for date:', formattedDate); // Debug log
+      
       // Buscar agendamentos aprovados para a data selecionada
       const { data: existingSchedules, error } = await supabase
         .from('schedules')
@@ -48,11 +50,21 @@ const SchedulingSystem = () => {
         throw error;
       }
 
-      // Extrair horários já ocupados
-      const occupiedTimes = existingSchedules?.map(schedule => schedule.scheduled_time) || [];
+      console.log('Existing schedules:', existingSchedules); // Debug log
+
+      // Extrair horários já ocupados e normalizar formato
+      const occupiedTimes = existingSchedules?.map(schedule => {
+        // Converter formato HH:MM:SS para HH:MM
+        const time = schedule.scheduled_time;
+        return time.length > 5 ? time.substring(0, 5) : time;
+      }) || [];
+      
+      console.log('Occupied times:', occupiedTimes); // Debug log
       
       // Filtrar horários disponíveis
       const available = allTimes.filter(time => !occupiedTimes.includes(time));
+      
+      console.log('Available times:', available); // Debug log
       
       setAvailableTimes(available);
       setOccupiedTimes(occupiedTimes);
@@ -89,6 +101,8 @@ const SchedulingSystem = () => {
 
     const formattedDate = format(selectedDate, 'yyyy-MM-dd');
     
+    console.log('Setting up realtime for date:', formattedDate); // Debug log
+    
     const channel = supabase
       .channel('schedules-changes')
       .on(
@@ -96,10 +110,10 @@ const SchedulingSystem = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'schedules',
-          filter: `scheduled_date=eq.${formattedDate}`
+          table: 'schedules'
         },
-        () => {
+        (payload) => {
+          console.log('Realtime update received:', payload); // Debug log
           // Recarregar horários disponíveis quando houver mudanças
           fetchAvailableTimes(selectedDate);
         }
