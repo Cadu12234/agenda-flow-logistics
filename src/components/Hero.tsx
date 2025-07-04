@@ -4,27 +4,27 @@ import { Button } from "@/components/ui/button";
 
 const Hero = () => {
   return (
-    <section className="relative min-h-screen bg-gradient-to-br from-gray-800 via-gray-900 to-black">
+    <section className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
       {/* Background Image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
         style={{
           backgroundImage: `url('/lovable-uploads/71d3def1-1b00-4aac-aa00-f732b9b115a6.png')`
         }}
       />
       
+      {/* Logo 3M - moved to top right corner */}
+      <div className="absolute top-4 right-4 z-20">
+        <img 
+          src="/lovable-uploads/281cc87a-37f5-4e7a-960e-3779375400a4.png" 
+          alt="3M Logo" 
+          className="h-12 opacity-80"
+        />
+      </div>
+      
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 py-20">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Logo 3M */}
-          <div className="mb-8">
-            <img 
-              src="/lovable-uploads/281cc87a-37f5-4e7a-960e-3779375400a4.png" 
-              alt="3M Logo" 
-              className="h-20 mx-auto mb-4"
-            />
-          </div>
-          
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
             Sistema de Logística
             <span className="text-green-400 block">Inteligente</span>

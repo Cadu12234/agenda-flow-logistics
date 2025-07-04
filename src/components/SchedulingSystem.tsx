@@ -32,12 +32,28 @@ const SchedulingSystem = () => {
     "15:00", "15:30", "16:00", "16:30", "17:00"
   ];
 
+  // Função para filtrar horários baseado na hora atual
+  const getFilteredTimes = (times: string[], selectedDate: Date) => {
+    const now = new Date();
+    const today = format(now, 'yyyy-MM-dd');
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    
+    // Se a data selecionada não é hoje, mostrar todos os horários
+    if (selectedDateStr !== today) {
+      return times;
+    }
+    
+    // Se é hoje, filtrar horários que já passaram
+    const currentTime = format(now, 'HH:mm');
+    return times.filter(time => time > currentTime);
+  };
+
   const fetchAvailableTimes = async (date: Date) => {
     setLoadingTimes(true);
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
       
-      console.log('Fetching schedules for date:', formattedDate); // Debug log
+      console.log('Fetching schedules for date:', formattedDate);
       
       // Buscar agendamentos aprovados para a data selecionada
       const { data: existingSchedules, error } = await supabase
@@ -50,27 +66,29 @@ const SchedulingSystem = () => {
         throw error;
       }
 
-      console.log('Existing schedules:', existingSchedules); // Debug log
+      console.log('Existing schedules:', existingSchedules);
 
       // Extrair horários já ocupados e normalizar formato
       const occupiedTimes = existingSchedules?.map(schedule => {
-        // Converter formato HH:MM:SS para HH:MM
         const time = schedule.scheduled_time;
         return time.length > 5 ? time.substring(0, 5) : time;
       }) || [];
       
-      console.log('Occupied times:', occupiedTimes); // Debug log
+      console.log('Occupied times:', occupiedTimes);
       
-      // Filtrar horários disponíveis
-      const available = allTimes.filter(time => !occupiedTimes.includes(time));
+      // Filtrar horários baseado na hora atual
+      const filteredTimes = getFilteredTimes(allTimes, date);
       
-      console.log('Available times:', available); // Debug log
+      // Filtrar horários disponíveis (não ocupados e não passados)
+      const available = filteredTimes.filter(time => !occupiedTimes.includes(time));
+      
+      console.log('Available times:', available);
       
       setAvailableTimes(available);
       setOccupiedTimes(occupiedTimes);
       
       // Se o horário selecionado não está mais disponível, limpar seleção
-      if (selectedTime && occupiedTimes.includes(selectedTime)) {
+      if (selectedTime && (!available.includes(selectedTime) || occupiedTimes.includes(selectedTime))) {
         setSelectedTime("");
       }
     } catch (error: any) {
@@ -80,8 +98,9 @@ const SchedulingSystem = () => {
         description: "Não foi possível carregar os horários disponíveis.",
         variant: "destructive"
       });
-      // Em caso de erro, mostrar todos os horários
-      setAvailableTimes(allTimes);
+      // Em caso de erro, mostrar horários filtrados por tempo
+      const filteredTimes = getFilteredTimes(allTimes, date);
+      setAvailableTimes(filteredTimes);
       setOccupiedTimes([]);
     } finally {
       setLoadingTimes(false);
@@ -95,13 +114,30 @@ const SchedulingSystem = () => {
     }
   }, [selectedDate]);
 
+  // Atualizar horários a cada minuto para remover horários que passaram
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (selectedDate) {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+        
+        // Só atualizar se a data selecionada é hoje
+        if (selectedDateStr === today) {
+          fetchAvailableTimes(selectedDate);
+        }
+      }
+    }, 60000); // Atualizar a cada minuto
+
+    return () => clearInterval(interval);
+  }, [selectedDate]);
+
   // Configurar real-time para atualizar horários quando houver mudanças
   useEffect(() => {
     if (!selectedDate) return;
 
     const formattedDate = format(selectedDate, 'yyyy-MM-dd');
     
-    console.log('Setting up realtime for date:', formattedDate); // Debug log
+    console.log('Setting up realtime for date:', formattedDate);
     
     const channel = supabase
       .channel('schedules-changes')
@@ -113,8 +149,7 @@ const SchedulingSystem = () => {
           table: 'schedules'
         },
         (payload) => {
-          console.log('Realtime update received:', payload); // Debug log
-          // Recarregar horários disponíveis quando houver mudanças
+          console.log('Realtime update received:', payload);
           fetchAvailableTimes(selectedDate);
         }
       )
@@ -193,6 +228,14 @@ const SchedulingSystem = () => {
     }
   };
 
+  // Função para determinar se um horário deve ser mostrado
+  const shouldShowTime = (time: string) => {
+    if (!selectedDate) return false;
+    
+    const filteredTimes = getFilteredTimes(allTimes, selectedDate);
+    return filteredTimes.includes(time);
+  };
+
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-green-50">
       <div className="container mx-auto px-4">
@@ -240,6 +283,12 @@ const SchedulingSystem = () => {
                       const isAvailable = availableTimes.includes(time);
                       const isSelected = selectedTime === time;
                       const isOccupied = occupiedTimes.includes(time);
+                      const shouldShow = shouldShowTime(time);
+                      
+                      // Não mostrar horários que já passaram
+                      if (!shouldShow) {
+                        return null;
+                      }
                       
                       return (
                         <button
