@@ -8,11 +8,13 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import StatusBadge from '@/components/approval/StatusBadge';
+import Navigation from '@/components/Navigation';
 
 const Reports = () => {
   const [schedules, setSchedules] = useState<ScheduleRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [todaySchedules, setTodaySchedules] = useState<ScheduleRequest[]>([]);
+  const [activeSection, setActiveSection] = useState('reports');
 
   useEffect(() => {
     fetchSchedules();
@@ -83,7 +85,9 @@ const Reports = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 py-8">
+    <>
+      <Navigation activeSection={activeSection} setActiveSection={setActiveSection} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 py-8 pt-24">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -267,6 +271,7 @@ const Reports = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 
