@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, Clock, Calendar, Truck, User, MessageSquare, Mail, CalendarDays } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAvailableTimeSlots } from '@/hooks/useAvailableTimeSlots';
 
 interface ScheduleRequest {
   id: string;
@@ -29,15 +30,11 @@ const ApprovalDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
-  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState('');
 
-  // Available time slots
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '15:30', '16:00', '16:30', '17:00'
-  ];
+  // Hook para horários disponíveis na data de reagendamento
+  const { availableTimes, loadingTimes } = useAvailableTimeSlots(rescheduleDate);
 
   useEffect(() => {
     fetchScheduleRequests();
@@ -168,7 +165,7 @@ const ApprovalDashboard = () => {
       const { error } = await supabase
         .from('schedules')
         .update({ 
-          scheduled_date: rescheduleDate,
+          scheduled_date: format(rescheduleDate, 'yyyy-MM-dd'),
           scheduled_time: rescheduleTime,
           status: 'approved',
           updated_at: new Date().toISOString()
@@ -185,7 +182,7 @@ const ApprovalDashboard = () => {
           request.id === id 
             ? { 
                 ...request, 
-                scheduled_date: rescheduleDate,
+                scheduled_date: format(rescheduleDate, 'yyyy-MM-dd'),
                 scheduled_time: rescheduleTime,
                 status: 'approved'
               }
@@ -195,14 +192,14 @@ const ApprovalDashboard = () => {
 
       toast({
         title: "Agendamento reagendado!",
-        description: `O agendamento foi reagendado para ${format(new Date(rescheduleDate), 'dd/MM/yyyy', { locale: ptBR })} às ${rescheduleTime}.`,
+        description: `O agendamento foi reagendado para ${format(rescheduleDate, 'dd/MM/yyyy', { locale: ptBR })} às ${rescheduleTime}.`,
         variant: "default"
       });
 
       // Enviar email automaticamente
       await sendApprovalEmail(id, 'approved');
 
-      setRescheduleDate('');
+      setRescheduleDate(undefined);
       setRescheduleTime('');
     } catch (error: any) {
       console.error('Error rescheduling:', error);
@@ -211,6 +208,18 @@ const ApprovalDashboard = () => {
         description: error.message || "Não foi possível reagendar o agendamento.",
         variant: "destructive"
       });
+    }
+  };
+
+  // Função para formatar data corretamente
+  const formatDisplayDate = (dateString: string) => {
+    try {
+      // Parse da string de data ISO
+      const date = parseISO(dateString);
+      return format(date, 'dd/MM/yyyy', { locale: ptBR });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
     }
   };
 
@@ -329,7 +338,7 @@ const ApprovalDashboard = () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <span className="font-medium">Data:</span>
-                      <span>{format(new Date(request.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                      <span>{formatDisplayDate(request.scheduled_date)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-500" />
@@ -428,26 +437,31 @@ const ApprovalDashboard = () => {
                             <label className="block text-sm font-medium mb-2">Nova Data:</label>
                             <input
                               type="date"
-                              value={rescheduleDate}
-                              onChange={(e) => setRescheduleDate(e.target.value)}
+                              value={rescheduleDate ? format(rescheduleDate, 'yyyy-MM-dd') : ''}
+                              onChange={(e) => setRescheduleDate(e.target.value ? new Date(e.target.value) : undefined)}
                               min={new Date().toISOString().split('T')[0]}
                               className="w-full p-2 border border-gray-300 rounded-md"
                             />
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">Novo Horário:</label>
+                            {loadingTimes && <p className="text-sm text-gray-500">Carregando horários...</p>}
                             <select
                               value={rescheduleTime}
                               onChange={(e) => setRescheduleTime(e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
+                              disabled={loadingTimes || !rescheduleDate}
                             >
                               <option value="">Selecione um horário</option>
-                              {timeSlots.map((time) => (
+                              {availableTimes.map((time) => (
                                 <option key={time} value={time}>
                                   {time}
                                 </option>
                               ))}
                             </select>
+                            {rescheduleDate && availableTimes.length === 0 && !loadingTimes && (
+                              <p className="text-sm text-red-500 mt-1">Nenhum horário disponível para esta data</p>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <Button 
@@ -489,7 +503,7 @@ const ApprovalDashboard = () => {
                       <div>
                         <p className="font-medium">{request.supplier_name}</p>
                         <p className="text-sm text-gray-600">
-                          {format(new Date(request.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })} às {request.scheduled_time}
+                          {formatDisplayDate(request.scheduled_date)} às {request.scheduled_time}
                         </p>
                       </div>
                     </div>
