@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 interface ApprovalEmailRequest {
-  scheduleId: string;
+  scheduleId: number;
   status: 'approved' | 'rejected';
   rejectionReason?: string;
 }
@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
     let htmlContent = '';
 
     if (status === 'approved') {
-      subject = `✅ Agendamento Aprovado - ID: ${scheduleData.id.substring(0, 8)}`;
+      subject = `✅ Agendamento Aprovado - ID: ${scheduleData.id}`;
       htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       `;
     } else {
-      subject = `❌ Agendamento Rejeitado - ID: ${scheduleData.id.substring(0, 8)}`;
+      subject = `❌ Agendamento Rejeitado - ID: ${scheduleData.id}`;
       htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
