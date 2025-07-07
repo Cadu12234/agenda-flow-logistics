@@ -1,226 +1,24 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon, Clock, Truck, User } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Truck } from 'lucide-react';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { toast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAvailableTimeSlots } from '@/hooks/useAvailableTimeSlots';
+import SchedulingForm from './SchedulingForm';
 
 const SchedulingSystem = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>("");
-  const [supplierName, setSupplierName] = useState<string>("");
-  const [vehicleType, setVehicleType] = useState<string>("");
-  const [deliveryType, setDeliveryType] = useState<string>("");
-  const [observations, setObservations] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
-  const [loadingTimes, setLoadingTimes] = useState(false);
-  const { user } = useAuth();
+  
+  const { availableTimes, occupiedTimes, loadingTimes } = useAvailableTimeSlots(selectedDate);
 
   const allTimes = [
     "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
     "11:00", "11:30", "13:00", "13:30", "14:00", "14:30",
     "15:00", "15:30", "16:00", "16:30", "17:00"
   ];
-
-  // Função para filtrar horários baseado na hora atual
-  const getFilteredTimes = (times: string[], selectedDate: Date) => {
-    const now = new Date();
-    const today = format(now, 'yyyy-MM-dd');
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    
-    // Se a data selecionada não é hoje, mostrar todos os horários
-    if (selectedDateStr !== today) {
-      return times;
-    }
-    
-    // Se é hoje, filtrar horários que já passaram
-    const currentTime = format(now, 'HH:mm');
-    return times.filter(time => time > currentTime);
-  };
-
-  const fetchAvailableTimes = async (date: Date) => {
-    setLoadingTimes(true);
-    try {
-      const formattedDate = format(date, 'yyyy-MM-dd');
-      
-      console.log('Fetching schedules for date:', formattedDate);
-      
-      // Buscar agendamentos aprovados para a data selecionada
-      const { data: existingSchedules, error } = await supabase
-        .from('schedules')
-        .select('scheduled_time')
-        .eq('scheduled_date', formattedDate)
-        .eq('status', 'approved');
-
-      if (error) {
-        throw error;
-      }
-
-      console.log('Existing schedules:', existingSchedules);
-
-      // Extrair horários já ocupados e normalizar formato
-      const occupiedTimes = existingSchedules?.map(schedule => {
-        const time = schedule.scheduled_time;
-        return time.length > 5 ? time.substring(0, 5) : time;
-      }) || [];
-      
-      console.log('Occupied times:', occupiedTimes);
-      
-      // Filtrar horários baseado na hora atual
-      const filteredTimes = getFilteredTimes(allTimes, date);
-      
-      // Filtrar horários disponíveis (não ocupados e não passados)
-      const available = filteredTimes.filter(time => !occupiedTimes.includes(time));
-      
-      console.log('Available times:', available);
-      
-      setAvailableTimes(available);
-      setOccupiedTimes(occupiedTimes);
-      
-      // Se o horário selecionado não está mais disponível, limpar seleção
-      if (selectedTime && (!available.includes(selectedTime) || occupiedTimes.includes(selectedTime))) {
-        setSelectedTime("");
-      }
-    } catch (error: any) {
-      console.error('Error fetching available times:', error);
-      toast({
-        title: "Erro ao carregar horários",
-        description: "Não foi possível carregar os horários disponíveis.",
-        variant: "destructive"
-      });
-      // Em caso de erro, mostrar horários filtrados por tempo
-      const filteredTimes = getFilteredTimes(allTimes, date);
-      setAvailableTimes(filteredTimes);
-      setOccupiedTimes([]);
-    } finally {
-      setLoadingTimes(false);
-    }
-  };
-
-  // Carregar horários disponíveis quando a data muda
-  useEffect(() => {
-    if (selectedDate) {
-      fetchAvailableTimes(selectedDate);
-    }
-  }, [selectedDate]);
-
-  // Atualizar horários a cada minuto para remover horários que passaram
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (selectedDate) {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-        
-        // Só atualizar se a data selecionada é hoje
-        if (selectedDateStr === today) {
-          fetchAvailableTimes(selectedDate);
-        }
-      }
-    }, 60000); // Atualizar a cada minuto
-
-    return () => clearInterval(interval);
-  }, [selectedDate]);
-
-  // Configurar real-time para atualizar horários quando houver mudanças
-  useEffect(() => {
-    if (!selectedDate) return;
-
-    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-    
-    console.log('Setting up realtime for date:', formattedDate);
-    
-    const channel = supabase
-      .channel('schedules-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'schedules'
-        },
-        (payload) => {
-          console.log('Realtime update received:', payload);
-          fetchAvailableTimes(selectedDate);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedDate]);
-
-  const handleSchedule = async () => {
-    if (!selectedDate || !selectedTime || !supplierName || !vehicleType || !deliveryType) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Você precisa estar logado para agendar.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { error } = await supabase
-        .from('schedules')
-        .insert({
-          user_id: user.id,
-          supplier_name: supplierName,
-          scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
-          scheduled_time: selectedTime,
-          vehicle_type: vehicleType,
-          delivery_type: deliveryType,
-          observations: observations || null,
-          status: 'pending'
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Agendamento solicitado!",
-        description: `Agendamento para ${format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} às ${selectedTime} enviado para aprovação.`,
-      });
-
-      // Reset form
-      setSelectedTime("");
-      setSupplierName("");
-      setVehicleType("");
-      setDeliveryType("");
-      setObservations("");
-    } catch (error: any) {
-      console.error('Error creating schedule:', error);
-      toast({
-        title: "Erro ao agendar",
-        description: error.message || "Ocorreu um erro ao criar o agendamento.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleTimeSelect = (time: string) => {
     if (availableTimes.includes(time)) {
@@ -232,8 +30,18 @@ const SchedulingSystem = () => {
   const shouldShowTime = (time: string) => {
     if (!selectedDate) return false;
     
-    const filteredTimes = getFilteredTimes(allTimes, selectedDate);
-    return filteredTimes.includes(time);
+    const now = new Date();
+    const today = format(now, 'yyyy-MM-dd');
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    
+    // Se a data selecionada não é hoje, mostrar todos os horários
+    if (selectedDateStr !== today) {
+      return true;
+    }
+    
+    // Se é hoje, filtrar horários que já passaram
+    const currentTime = format(now, 'HH:mm');
+    return time > currentTime;
   };
 
   return (
@@ -344,84 +152,13 @@ const SchedulingSystem = () => {
                 Detalhes do Agendamento
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="supplier" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Nome do Fornecedor *
-                </Label>
-                <Input
-                  id="supplier"
-                  value={supplierName}
-                  onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder="Digite o nome do fornecedor"
-                  className="border-gray-300 focus:border-green-500"
-                />
-              </div>
-
-              {selectedTime && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-blue-800">
-                    <Clock className="h-4 w-4" />
-                    <span className="font-medium">
-                      Horário selecionado: {selectedTime}
-                    </span>
-                  </div>
-                  <div className="text-sm text-blue-600 mt-1">
-                    {selectedDate && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Tipo de Veículo *</Label>
-                <Select value={vehicleType} onValueChange={setVehicleType}>
-                  <SelectTrigger className="border-gray-300 focus:border-green-500">
-                    <SelectValue placeholder="Selecione o tipo de veículo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="van">Van</SelectItem>
-                    <SelectItem value="caminhao-pequeno">Caminhão Pequeno</SelectItem>
-                    <SelectItem value="caminhao-medio">Caminhão Médio</SelectItem>
-                    <SelectItem value="caminhao-grande">Caminhão Grande</SelectItem>
-                    <SelectItem value="carreta">Carreta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tipo de Entrega *</Label>
-                <Select value={deliveryType} onValueChange={setDeliveryType}>
-                  <SelectTrigger className="border-gray-300 focus:border-green-500">
-                    <SelectValue placeholder="Selecione o tipo de entrega" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="materias-primas">Matérias-primas</SelectItem>
-                    <SelectItem value="produtos-acabados">Produtos Acabados</SelectItem>
-                    <SelectItem value="equipamentos">Equipamentos</SelectItem>
-                    <SelectItem value="insumos">Insumos</SelectItem>
-                    <SelectItem value="outros">Outros</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
-                  value={observations}
-                  onChange={(e) => setObservations(e.target.value)}
-                  placeholder="Informações adicionais sobre a entrega..."
-                  className="border-gray-300 focus:border-green-500 min-h-[80px]"
-                />
-              </div>
-
-              <Button 
-                onClick={handleSchedule}
-                disabled={loading || !selectedTime || !supplierName || !vehicleType || !deliveryType}
-                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
-              >
-                {loading ? 'Enviando...' : 'Solicitar Agendamento'}
-              </Button>
+            <CardContent className="p-6">
+              <SchedulingForm
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                setSelectedTime={setSelectedTime}
+                availableTimes={availableTimes}
+              />
             </CardContent>
           </Card>
         </div>
