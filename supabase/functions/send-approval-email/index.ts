@@ -77,6 +77,8 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 10px 0;"><strong>⏰ Horário:</strong> ${formattedTime}</p>
               <p style="margin: 10px 0;"><strong>🚛 Tipo de Veículo:</strong> ${scheduleData.vehicle_type}</p>
               <p style="margin: 10px 0;"><strong>📦 Tipo de Entrega:</strong> ${scheduleData.delivery_type}</p>
+              <p style="margin: 10px 0;"><strong>📋 Ordem de Compra:</strong> ${scheduleData.purchase_order}</p>
+              <p style="margin: 10px 0;"><strong>📊 Quantidade de Pallet:</strong> ${scheduleData.pallet_quantity}</p>
               ${scheduleData.observations ? `<p style="margin: 10px 0;"><strong>📝 Observações:</strong> ${scheduleData.observations}</p>` : ''}
             </div>
             
@@ -112,6 +114,8 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 10px 0;"><strong>⏰ Horário:</strong> ${formattedTime}</p>
               <p style="margin: 10px 0;"><strong>🚛 Tipo de Veículo:</strong> ${scheduleData.vehicle_type}</p>
               <p style="margin: 10px 0;"><strong>📦 Tipo de Entrega:</strong> ${scheduleData.delivery_type}</p>
+              <p style="margin: 10px 0;"><strong>📋 Ordem de Compra:</strong> ${scheduleData.purchase_order}</p>
+              <p style="margin: 10px 0;"><strong>📊 Quantidade de Pallet:</strong> ${scheduleData.pallet_quantity}</p>
               ${scheduleData.observations ? `<p style="margin: 10px 0;"><strong>📝 Observações:</strong> ${scheduleData.observations}</p>` : ''}
             </div>
             
@@ -134,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "Sistema de Agendamento <onboarding@resend.dev>",
-      to: [userEmail],
+      to: [userEmail, "adm7mzz@mmm.com"],
       subject: subject,
       html: htmlContent,
     });

@@ -31,12 +31,14 @@ const SchedulingForm = ({
 }: SchedulingFormProps) => {
   const [supplierName, setSupplierName] = useState<string>("");
   const [vehicleType, setVehicleType] = useState<string>("");
+  const [purchaseOrder, setPurchaseOrder] = useState<string>("");
+  const [palletQuantity, setPalletQuantity] = useState<string>("");
   const [observations, setObservations] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedTime || !supplierName || !vehicleType || !deliveryType) {
+    if (!selectedDate || !selectedTime || !supplierName || !vehicleType || !deliveryType || !purchaseOrder || !palletQuantity) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -66,6 +68,8 @@ const SchedulingForm = ({
           scheduled_time: selectedTime,
           vehicle_type: vehicleType,
           delivery_type: deliveryType,
+          purchase_order: purchaseOrder,
+          pallet_quantity: parseInt(palletQuantity),
           observations: observations || null,
           status: 'pending'
         });
@@ -83,6 +87,8 @@ const SchedulingForm = ({
       setSelectedTime("");
       setSupplierName("");
       setVehicleType("");
+      setPurchaseOrder("");
+      setPalletQuantity("");
       onDeliveryTypeChange("");
       setObservations("");
     } catch (error: any) {
@@ -158,6 +164,30 @@ const SchedulingForm = ({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="purchaseOrder">Ordem de Compra *</Label>
+        <Input
+          id="purchaseOrder"
+          value={purchaseOrder}
+          onChange={(e) => setPurchaseOrder(e.target.value)}
+          placeholder="Digite o número da ordem de compra"
+          className="border-gray-300 focus:border-green-500"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="palletQuantity">Quantidade de Pallet *</Label>
+        <Input
+          id="palletQuantity"
+          type="number"
+          min="1"
+          value={palletQuantity}
+          onChange={(e) => setPalletQuantity(e.target.value)}
+          placeholder="Digite a quantidade de pallets"
+          className="border-gray-300 focus:border-green-500"
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label>Observações</Label>
         <Textarea
           value={observations}
@@ -169,7 +199,7 @@ const SchedulingForm = ({
 
       <Button 
         onClick={handleSchedule}
-        disabled={loading || !selectedTime || !supplierName || !vehicleType || !deliveryType}
+        disabled={loading || !selectedTime || !supplierName || !vehicleType || !deliveryType || !purchaseOrder || !palletQuantity}
         className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
       >
         {loading ? 'Enviando...' : 'Solicitar Agendamento'}

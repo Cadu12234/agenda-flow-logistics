@@ -44,6 +44,8 @@ export type Database = {
           delivery_type: string
           id: number
           observations: string | null
+          pallet_quantity: number
+          purchase_order: string
           rejection_reason: string | null
           scheduled_date: string
           scheduled_time: string
@@ -58,6 +60,8 @@ export type Database = {
           delivery_type: string
           id?: number
           observations?: string | null
+          pallet_quantity?: number
+          purchase_order?: string
           rejection_reason?: string | null
           scheduled_date: string
           scheduled_time: string
@@ -72,6 +76,8 @@ export type Database = {
           delivery_type?: string
           id?: number
           observations?: string | null
+          pallet_quantity?: number
+          purchase_order?: string
           rejection_reason?: string | null
           scheduled_date?: string
           scheduled_time?: string

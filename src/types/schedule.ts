@@ -6,6 +6,8 @@ export interface ScheduleRequest {
   scheduled_time: string;
   vehicle_type: string;
   delivery_type: string;
+  purchase_order: string;
+  pallet_quantity: number;
   observations: string | null;
   status: string;
   created_at: string;

@@ -19,6 +19,9 @@ const ProcessedRequestCard = ({ request }: ProcessedRequestCardProps) => {
               <p className="text-sm text-gray-600">
                 {formatDisplayDate(request.scheduled_date)} às {request.scheduled_time}
               </p>
+              <p className="text-sm text-gray-500">
+                OC: {request.purchase_order} | Pallets: {request.pallet_quantity}
+              </p>
             </div>
           </div>
           <StatusBadge status={request.status} />

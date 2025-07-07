@@ -54,6 +54,14 @@ const PendingRequestCard = ({ request, sendingEmail, onApprove, onReject, onResc
             <span className="font-medium">Tipo:</span>
             <span>{request.delivery_type}</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Ordem de Compra:</span>
+            <span>{request.purchase_order}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Qtd. Pallet:</span>
+            <span>{request.pallet_quantity}</span>
+          </div>
         </div>
         
         {request.observations && (
