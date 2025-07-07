@@ -19,14 +19,14 @@ const Index = () => {
   const renderActiveSection = () => {
     switch (activeSection) {
       case 'home':
-        return <Hero />;
+        return <Hero setActiveSection={setActiveSection} />;
       case 'schedule':
         return <SchedulingSystem />;
       case 'dashboard':
         // Only admin users can access dashboard
-        return userProfile?.is_admin ? <ApprovalDashboard /> : <Hero />;
+        return userProfile?.is_admin ? <ApprovalDashboard /> : <Hero setActiveSection={setActiveSection} />;
       default:
-        return <Hero />;
+        return <Hero setActiveSection={setActiveSection} />;
     }
   };
 
