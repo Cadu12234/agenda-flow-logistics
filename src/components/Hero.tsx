@@ -2,12 +2,17 @@
 import { Calendar, Clock, CheckCircle, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
-const Hero = () => {
+interface HeroProps {
+  onScheduleClick?: () => void;
+  onDashboardClick?: () => void;
+}
+
+const Hero = ({ onScheduleClick, onDashboardClick }: HeroProps) => {
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
       {/* Background Image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
         style={{
           backgroundImage: `url('/lovable-uploads/71d3def1-1b00-4aac-aa00-f732b9b115a6.png')`
         }}
@@ -16,7 +21,7 @@ const Hero = () => {
       {/* Logo 3M - moved to top right corner */}
       <div className="absolute top-4 right-4 z-20">
         <img 
-          src="/lovable-uploads/281cc87a-37f5-4e7a-960e-3779375400a4.png" 
+          src="/lovable-uploads/877200bc-b61f-4d89-8fd3-0d88bca37407.png" 
           alt="3M Logo" 
           className="h-12 opacity-80"
         />
@@ -26,8 +31,8 @@ const Hero = () => {
       <div className="relative z-10 container mx-auto px-4 py-20">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-            Sistema de Logística
-            <span className="text-green-400 block">Inteligente</span>
+            Sistema de Agendamento
+            <span className="text-green-400 block">Agendamento 3M</span>
           </h1>
           
           <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
@@ -39,6 +44,7 @@ const Hero = () => {
             <Button 
               size="lg" 
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105"
+              onClick={onScheduleClick}
             >
               <Calendar className="mr-2 h-5 w-5" />
               Agendar Entrega
@@ -47,6 +53,7 @@ const Hero = () => {
               size="lg" 
               variant="outline" 
               className="border-2 border-green-400 text-green-400 hover:bg-green-600 hover:text-white px-8 py-3 rounded-full font-semibold transition-all duration-300"
+              onClick={onDashboardClick}
             >
               <Users className="mr-2 h-5 w-5" />
               Painel Gestor
