@@ -32,6 +32,9 @@ const ApprovalDashboard = () => {
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   // Hook para horários disponíveis na data de reagendamento
   const { availableTimes, loadingTimes } = useAvailableTimeSlots(rescheduleDate);
@@ -141,6 +144,7 @@ const ApprovalDashboard = () => {
       await sendApprovalEmail(id, status, reason);
 
       setRejectionReason('');
+      setRejectDialogOpen(false);
     } catch (error: any) {
       console.error('Error updating schedule:', error);
       toast({
@@ -199,8 +203,11 @@ const ApprovalDashboard = () => {
       // Enviar email automaticamente
       await sendApprovalEmail(id, 'approved');
 
+      // Reset form
       setRescheduleDate(undefined);
       setRescheduleTime('');
+      setRescheduleDialogOpen(false);
+      setCurrentRequestId(null);
     } catch (error: any) {
       console.error('Error rescheduling:', error);
       toast({
@@ -209,6 +216,19 @@ const ApprovalDashboard = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const openRescheduleDialog = (requestId: string) => {
+    setCurrentRequestId(requestId);
+    setRescheduleDate(undefined);
+    setRescheduleTime('');
+    setRescheduleDialogOpen(true);
+  };
+
+  const openRejectDialog = (requestId: string) => {
+    setCurrentRequestId(requestId);
+    setRejectionReason('');
+    setRejectDialogOpen(true);
   };
 
   // Função para formatar data corretamente
@@ -379,104 +399,25 @@ const ApprovalDashboard = () => {
                       {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
                     </Button>
                     
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="flex-1 min-w-[120px] border-red-300 text-red-600 hover:bg-red-50"
-                          disabled={sendingEmail === request.id}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Rejeitar
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Rejeitar Agendamento</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <p>Informe o motivo da rejeição:</p>
-                          <Textarea
-                            value={rejectionReason}
-                            onChange={(e) => setRejectionReason(e.target.value)}
-                            placeholder="Motivo da rejeição..."
-                            className="min-h-[100px]"
-                          />
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={() => handleApproval(request.id, 'rejected', rejectionReason)}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                              disabled={sendingEmail === request.id || !rejectionReason.trim()}
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              {sendingEmail === request.id ? 'Enviando...' : 'Confirmar Rejeição'}
-                              {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <Button 
+                      onClick={() => openRejectDialog(request.id)}
+                      variant="outline" 
+                      className="flex-1 min-w-[120px] border-red-300 text-red-600 hover:bg-red-50"
+                      disabled={sendingEmail === request.id}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Rejeitar
+                    </Button>
 
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="flex-1 min-w-[120px] border-blue-300 text-blue-600 hover:bg-blue-50"
-                          disabled={sendingEmail === request.id}
-                        >
-                          <CalendarDays className="h-4 w-4 mr-2" />
-                          Reagendar
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Reagendar Agendamento</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Nova Data:</label>
-                            <input
-                              type="date"
-                              value={rescheduleDate ? format(rescheduleDate, 'yyyy-MM-dd') : ''}
-                              onChange={(e) => setRescheduleDate(e.target.value ? new Date(e.target.value) : undefined)}
-                              min={new Date().toISOString().split('T')[0]}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Novo Horário:</label>
-                            {loadingTimes && <p className="text-sm text-gray-500">Carregando horários...</p>}
-                            <select
-                              value={rescheduleTime}
-                              onChange={(e) => setRescheduleTime(e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                              disabled={loadingTimes || !rescheduleDate}
-                            >
-                              <option value="">Selecione um horário</option>
-                              {availableTimes.map((time) => (
-                                <option key={time} value={time}>
-                                  {time}
-                                </option>
-                              ))}
-                            </select>
-                            {rescheduleDate && availableTimes.length === 0 && !loadingTimes && (
-                              <p className="text-sm text-red-500 mt-1">Nenhum horário disponível para esta data</p>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={() => handleReschedule(request.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                              disabled={sendingEmail === request.id || !rescheduleDate || !rescheduleTime}
-                            >
-                              <CalendarDays className="h-4 w-4 mr-2" />
-                              {sendingEmail === request.id ? 'Reagendando...' : 'Confirmar Reagendamento'}
-                              {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <Button 
+                      onClick={() => openRescheduleDialog(request.id)}
+                      variant="outline" 
+                      className="flex-1 min-w-[120px] border-blue-300 text-blue-600 hover:bg-blue-50"
+                      disabled={sendingEmail === request.id}
+                    >
+                      <CalendarDays className="h-4 w-4 mr-2" />
+                      Reagendar
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -514,6 +455,106 @@ const ApprovalDashboard = () => {
             ))}
           </div>
         </div>
+
+        {/* Dialog for Rejection */}
+        <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Rejeitar Agendamento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p>Informe o motivo da rejeição:</p>
+              <Textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Motivo da rejeição..."
+                className="min-h-[100px]"
+              />
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => currentRequestId && handleApproval(currentRequestId, 'rejected', rejectionReason)}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  disabled={sendingEmail === currentRequestId || !rejectionReason.trim()}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  {sendingEmail === currentRequestId ? 'Enviando...' : 'Confirmar Rejeição'}
+                  {sendingEmail === currentRequestId && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setRejectDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog for Rescheduling */}
+        <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reagendar Agendamento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Nova Data:</label>
+                <input
+                  type="date"
+                  value={rescheduleDate ? format(rescheduleDate, 'yyyy-MM-dd') : ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setRescheduleDate(new Date(e.target.value + 'T00:00:00'));
+                    } else {
+                      setRescheduleDate(undefined);
+                    }
+                    setRescheduleTime(''); // Reset time when date changes
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Novo Horário:</label>
+                {loadingTimes && <p className="text-sm text-gray-500">Carregando horários...</p>}
+                <select
+                  value={rescheduleTime}
+                  onChange={(e) => setRescheduleTime(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  disabled={loadingTimes || !rescheduleDate}
+                >
+                  <option value="">Selecione um horário</option>
+                  {availableTimes.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+                {rescheduleDate && availableTimes.length === 0 && !loadingTimes && (
+                  <p className="text-sm text-red-500 mt-1">Nenhum horário disponível para esta data</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => currentRequestId && handleReschedule(currentRequestId)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={sendingEmail === currentRequestId || !rescheduleDate || !rescheduleTime}
+                >
+                  <CalendarDays className="h-4 w-4 mr-2" />
+                  {sendingEmail === currentRequestId ? 'Reagendando...' : 'Confirmar Reagendamento'}
+                  {sendingEmail === currentRequestId && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setRescheduleDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );
