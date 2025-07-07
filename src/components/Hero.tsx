@@ -1,29 +1,20 @@
-
 import { Calendar, Clock, CheckCircle, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-
 interface HeroProps {
   setActiveSection: (section: string) => void;
 }
-
-const Hero = ({ setActiveSection }: HeroProps) => {
-  return (
-    <section className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
+const Hero = ({
+  setActiveSection
+}: HeroProps) => {
+  return <section className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
       {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
-        style={{
-          backgroundImage: `url('/lovable-uploads/71d3def1-1b00-4aac-aa00-f732b9b115a6.png')`
-        }}
-      />
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20" style={{
+      backgroundImage: `url('/lovable-uploads/71d3def1-1b00-4aac-aa00-f732b9b115a6.png')`
+    }} />
       
       {/* Logo 3M - moved to top right corner */}
       <div className="absolute top-4 right-4 z-20">
-        <img 
-          src="/lovable-uploads/3e10f7e1-b8e3-433a-a3ba-3f806662c90e.png" 
-          alt="3M Logo" 
-          className="h-12 opacity-80"
-        />
+        <img src="/lovable-uploads/3e10f7e1-b8e3-433a-a3ba-3f806662c90e.png" alt="3M Logo" className="h-12 opacity-80" />
       </div>
       
       {/* Content */}
@@ -34,26 +25,14 @@ const Hero = ({ setActiveSection }: HeroProps) => {
             <span className="text-green-400 block">Inteligente</span>
           </h1>
           
-          <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
-            Gerencie agendamentos de fornecedores com eficiência. 
-            Agende, aprove e coordene entregas em tempo real.
-          </p>
+          <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto"></p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button 
-              size="lg" 
-              onClick={() => setActiveSection('schedule')}
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105"
-            >
+            <Button size="lg" onClick={() => setActiveSection('schedule')} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105">
               <Calendar className="mr-2 h-5 w-5" />
               Agendar Entrega
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={() => setActiveSection('dashboard')}
-              className="border-2 border-green-400 text-green-400 hover:bg-green-600 hover:text-white px-8 py-3 rounded-full font-semibold transition-all duration-300"
-            >
+            <Button size="lg" variant="outline" onClick={() => setActiveSection('dashboard')} className="border-2 border-green-400 text-green-400 hover:bg-green-600 hover:text-white px-8 py-3 rounded-full font-semibold transition-all duration-300">
               <Users className="mr-2 h-5 w-5" />
               Painel Gestor
             </Button>
@@ -87,8 +66,6 @@ const Hero = ({ setActiveSection }: HeroProps) => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
