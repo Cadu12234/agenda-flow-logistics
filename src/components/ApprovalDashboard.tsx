@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAvailableTimeSlots } from '@/hooks/useAvailableTimeSlots';
 
 interface ScheduleRequest {
-  id: string;
+  id: number; // Changed from string to number
   supplier_name: string;
   scheduled_date: string;
   scheduled_time: string;
@@ -28,13 +29,13 @@ const ApprovalDashboard = () => {
   const [scheduleRequests, setScheduleRequests] = useState<ScheduleRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState<number | null>(null); // Changed from string to number
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleDeliveryType, setRescheduleDeliveryType] = useState('');
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+  const [currentRequestId, setCurrentRequestId] = useState<number | null>(null); // Changed from string to number
 
   // Hook para horários disponíveis na data de reagendamento com tipo de entrega
   const { availableTimes, loadingTimes } = useAvailableTimeSlots(rescheduleDate, rescheduleDeliveryType);
@@ -67,7 +68,7 @@ const ApprovalDashboard = () => {
     }
   };
 
-  const sendApprovalEmail = async (scheduleId: string, status: 'approved' | 'rejected', rejectionReason?: string) => {
+  const sendApprovalEmail = async (scheduleId: number, status: 'approved' | 'rejected', rejectionReason?: string) => {
     try {
       setSendingEmail(scheduleId);
       
@@ -104,7 +105,7 @@ const ApprovalDashboard = () => {
     }
   };
 
-  const handleApproval = async (id: string, status: 'approved' | 'rejected', reason?: string) => {
+  const handleApproval = async (id: number, status: 'approved' | 'rejected', reason?: string) => {
     try {
       const updateData: any = { 
         status,
@@ -155,7 +156,7 @@ const ApprovalDashboard = () => {
     }
   };
 
-  const handleReschedule = async (id: string) => {
+  const handleReschedule = async (id: number) => {
     if (!rescheduleDate || !rescheduleTime) {
       toast({
         title: "Erro",
@@ -218,7 +219,7 @@ const ApprovalDashboard = () => {
     }
   };
 
-  const openRescheduleDialog = (requestId: string) => {
+  const openRescheduleDialog = (requestId: number) => {
     const request = scheduleRequests.find(req => req.id === requestId);
     setCurrentRequestId(requestId);
     setRescheduleDate(undefined);
@@ -227,7 +228,7 @@ const ApprovalDashboard = () => {
     setRescheduleDialogOpen(true);
   };
 
-  const openRejectDialog = (requestId: string) => {
+  const openRejectDialog = (requestId: number) => {
     setCurrentRequestId(requestId);
     setRejectionReason('');
     setRejectDialogOpen(true);
