@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, Clock, Calendar, Truck, User, MessageSquare, Mail } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Calendar, Truck, User, MessageSquare, Mail, CalendarDays } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -28,6 +29,15 @@ const ApprovalDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+
+  // Available time slots
+  const timeSlots = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '11:00', '11:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00'
+  ];
 
   useEffect(() => {
     fetchScheduleRequests();
@@ -139,6 +149,66 @@ const ApprovalDashboard = () => {
       toast({
         title: "Erro ao atualizar agendamento",
         description: error.message || "Não foi possível atualizar o agendamento.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleReschedule = async (id: string) => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione uma data e horário para reagendar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .update({ 
+          scheduled_date: rescheduleDate,
+          scheduled_time: rescheduleTime,
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setScheduleRequests(prev => 
+        prev.map(request => 
+          request.id === id 
+            ? { 
+                ...request, 
+                scheduled_date: rescheduleDate,
+                scheduled_time: rescheduleTime,
+                status: 'approved'
+              }
+            : request
+        )
+      );
+
+      toast({
+        title: "Agendamento reagendado!",
+        description: `O agendamento foi reagendado para ${format(new Date(rescheduleDate), 'dd/MM/yyyy', { locale: ptBR })} às ${rescheduleTime}.`,
+        variant: "default"
+      });
+
+      // Enviar email automaticamente
+      await sendApprovalEmail(id, 'approved');
+
+      setRescheduleDate('');
+      setRescheduleTime('');
+    } catch (error: any) {
+      console.error('Error rescheduling:', error);
+      toast({
+        title: "Erro ao reagendar",
+        description: error.message || "Não foi possível reagendar o agendamento.",
         variant: "destructive"
       });
     }
@@ -289,10 +359,10 @@ const ApprovalDashboard = () => {
                     </div>
                   )}
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     <Button 
                       onClick={() => handleApproval(request.id, 'approved')}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      className="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white"
                       disabled={sendingEmail === request.id}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
@@ -304,7 +374,7 @@ const ApprovalDashboard = () => {
                       <DialogTrigger asChild>
                         <Button 
                           variant="outline" 
-                          className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                          className="flex-1 min-w-[120px] border-red-300 text-red-600 hover:bg-red-50"
                           disabled={sendingEmail === request.id}
                         >
                           <XCircle className="h-4 w-4 mr-2" />
@@ -331,6 +401,62 @@ const ApprovalDashboard = () => {
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               {sendingEmail === request.id ? 'Enviando...' : 'Confirmar Rejeição'}
+                              {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 min-w-[120px] border-blue-300 text-blue-600 hover:bg-blue-50"
+                          disabled={sendingEmail === request.id}
+                        >
+                          <CalendarDays className="h-4 w-4 mr-2" />
+                          Reagendar
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Reagendar Agendamento</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Nova Data:</label>
+                            <input
+                              type="date"
+                              value={rescheduleDate}
+                              onChange={(e) => setRescheduleDate(e.target.value)}
+                              min={new Date().toISOString().split('T')[0]}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Novo Horário:</label>
+                            <select
+                              value={rescheduleTime}
+                              onChange={(e) => setRescheduleTime(e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                            >
+                              <option value="">Selecione um horário</option>
+                              {timeSlots.map((time) => (
+                                <option key={time} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={() => handleReschedule(request.id)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              disabled={sendingEmail === request.id || !rescheduleDate || !rescheduleTime}
+                            >
+                              <CalendarDays className="h-4 w-4 mr-2" />
+                              {sendingEmail === request.id ? 'Reagendando...' : 'Confirmar Reagendamento'}
                               {sendingEmail === request.id && <Mail className="h-4 w-4 ml-2 animate-pulse" />}
                             </Button>
                           </div>
