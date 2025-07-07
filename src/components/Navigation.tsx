@@ -7,7 +7,6 @@ interface NavigationProps {
   activeSection: string;
   setActiveSection: (section: string) => void;
 }
-
 const Navigation = ({
   activeSection,
   setActiveSection
@@ -40,7 +39,6 @@ const Navigation = ({
     icon: BarChart3,
     path: '/reports'
   }] : [])];
-  
   const handleNavigation = (item: any) => {
     if (item.path.startsWith('/#')) {
       navigate('/');
@@ -51,7 +49,6 @@ const Navigation = ({
       navigate(item.path);
     }
   };
-
   const handleLogout = async () => {
     await logout();
     navigate('/');
@@ -65,14 +62,14 @@ const Navigation = ({
             <div className="bg-gradient-to-r from-green-600 to-blue-600 p-2 rounded-lg">
               <Truck className="h-6 w-6 text-white" />
             </div>
-            <span className="font-bold text-red-600 text-2xl">Agendamento 3M</span>
+            <span className="font-bold text-red-600 text-sm">Agendamento 3M Itapetininga</span>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
             {navItems.map(item => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path || (item.id === activeSection && location.pathname === '/');
+            const isActive = location.pathname === item.path || item.id === activeSection && location.pathname === '/';
             return <Button key={item.id} variant={isActive ? "default" : "ghost"} onClick={() => handleNavigation(item)} className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white shadow-lg' : 'text-gray-700 hover:bg-gray-100'}`}>
                   <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
@@ -103,7 +100,7 @@ const Navigation = ({
             <div className="flex flex-col space-y-2">
               {navItems.map(item => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path || (item.id === activeSection && location.pathname === '/');
+            const isActive = location.pathname === item.path || item.id === activeSection && location.pathname === '/';
             return <Button key={item.id} variant={isActive ? "default" : "ghost"} onClick={() => {
               handleNavigation(item);
               setIsMenuOpen(false);
