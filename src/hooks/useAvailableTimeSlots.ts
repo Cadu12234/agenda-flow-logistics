@@ -10,7 +10,7 @@ const allTimes = [
   "15:00", "15:30", "16:00", "16:30", "17:00"
 ];
 
-export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
+export const useAvailableTimeSlots = (selectedDate: Date | undefined, deliveryType?: string) => {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
@@ -31,25 +31,32 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
     return times.filter(time => time > currentTime);
   };
 
-  const fetchAvailableTimes = async (date: Date) => {
+  const fetchAvailableTimes = async (date: Date, deliveryType?: string) => {
     setLoadingTimes(true);
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
       
-      console.log('Fetching schedules for date:', formattedDate);
+      console.log('Fetching schedules for date:', formattedDate, 'and delivery type:', deliveryType);
       
-      // Buscar agendamentos aprovados E pendentes para a data selecionada
-      const { data: existingSchedules, error } = await supabase
+      // Construir query base para buscar agendamentos aprovados E pendentes para a data selecionada
+      let query = supabase
         .from('schedules')
         .select('scheduled_time')
         .eq('scheduled_date', formattedDate)
-        .in('status', ['approved', 'pending']); // Incluir tanto aprovados quanto pendentes
+        .in('status', ['approved', 'pending']);
+
+      // Se um tipo de entrega foi especificado, filtrar apenas por esse tipo
+      if (deliveryType) {
+        query = query.eq('delivery_type', deliveryType);
+      }
+
+      const { data: existingSchedules, error } = await query;
 
       if (error) {
         throw error;
       }
 
-      console.log('Existing schedules:', existingSchedules);
+      console.log('Existing schedules for delivery type:', existingSchedules);
 
       // Extrair horários já ocupados e normalizar formato
       const occupiedTimes = existingSchedules?.map(schedule => {
@@ -57,7 +64,7 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
         return time.length > 5 ? time.substring(0, 5) : time;
       }) || [];
       
-      console.log('Occupied times:', occupiedTimes);
+      console.log('Occupied times for delivery type:', occupiedTimes);
       
       // Filtrar horários baseado na hora atual
       const filteredTimes = getFilteredTimes(allTimes, date);
@@ -65,7 +72,7 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
       // Filtrar horários disponíveis (não ocupados e não passados)
       const available = filteredTimes.filter(time => !occupiedTimes.includes(time));
       
-      console.log('Available times:', available);
+      console.log('Available times for delivery type:', available);
       
       setAvailableTimes(available);
       setOccupiedTimes(occupiedTimes);
@@ -85,12 +92,12 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
     }
   };
 
-  // Carregar horários disponíveis quando a data muda
+  // Carregar horários disponíveis quando a data ou tipo de entrega muda
   useEffect(() => {
     if (selectedDate) {
-      fetchAvailableTimes(selectedDate);
+      fetchAvailableTimes(selectedDate, deliveryType);
     }
-  }, [selectedDate]);
+  }, [selectedDate, deliveryType]);
 
   // Atualizar horários a cada minuto para remover horários que passaram
   useEffect(() => {
@@ -101,13 +108,13 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
         
         // Só atualizar se a data selecionada é hoje
         if (selectedDateStr === today) {
-          fetchAvailableTimes(selectedDate);
+          fetchAvailableTimes(selectedDate, deliveryType);
         }
       }
     }, 60000); // Atualizar a cada minuto
 
     return () => clearInterval(interval);
-  }, [selectedDate]);
+  }, [selectedDate, deliveryType]);
 
   // Configurar real-time para atualizar horários quando houver mudanças
   useEffect(() => {
@@ -115,7 +122,7 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
 
     const formattedDate = format(selectedDate, 'yyyy-MM-dd');
     
-    console.log('Setting up realtime for date:', formattedDate);
+    console.log('Setting up realtime for date:', formattedDate, 'and delivery type:', deliveryType);
     
     const channel = supabase
       .channel('schedules-changes')
@@ -128,7 +135,7 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
         },
         (payload) => {
           console.log('Realtime update received:', payload);
-          fetchAvailableTimes(selectedDate);
+          fetchAvailableTimes(selectedDate, deliveryType);
         }
       )
       .subscribe();
@@ -136,12 +143,12 @@ export const useAvailableTimeSlots = (selectedDate: Date | undefined) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedDate]);
+  }, [selectedDate, deliveryType]);
 
   return {
     availableTimes,
     occupiedTimes,
     loadingTimes,
-    refetch: () => selectedDate && fetchAvailableTimes(selectedDate)
+    refetch: () => selectedDate && fetchAvailableTimes(selectedDate, deliveryType)
   };
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,12 +31,13 @@ const ApprovalDashboard = () => {
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleDeliveryType, setRescheduleDeliveryType] = useState('');
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
-  // Hook para horários disponíveis na data de reagendamento
-  const { availableTimes, loadingTimes } = useAvailableTimeSlots(rescheduleDate);
+  // Hook para horários disponíveis na data de reagendamento com tipo de entrega
+  const { availableTimes, loadingTimes } = useAvailableTimeSlots(rescheduleDate, rescheduleDeliveryType);
 
   useEffect(() => {
     fetchScheduleRequests();
@@ -219,9 +219,11 @@ const ApprovalDashboard = () => {
   };
 
   const openRescheduleDialog = (requestId: string) => {
+    const request = scheduleRequests.find(req => req.id === requestId);
     setCurrentRequestId(requestId);
     setRescheduleDate(undefined);
     setRescheduleTime('');
+    setRescheduleDeliveryType(request?.delivery_type || '');
     setRescheduleDialogOpen(true);
   };
 
@@ -499,6 +501,22 @@ const ApprovalDashboard = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium mb-2">Tipo de Entrega:</label>
+                <select
+                  value={rescheduleDeliveryType}
+                  onChange={(e) => {
+                    setRescheduleDeliveryType(e.target.value);
+                    setRescheduleTime(''); // Reset time when delivery type changes
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Selecione o tipo de entrega</option>
+                  <option value="materias-primas">Matérias-primas</option>
+                  <option value="inflamavel">Inflamável</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-2">Nova Data:</label>
                 <input
                   type="date"
@@ -522,7 +540,7 @@ const ApprovalDashboard = () => {
                   value={rescheduleTime}
                   onChange={(e) => setRescheduleTime(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded-md"
-                  disabled={loadingTimes || !rescheduleDate}
+                  disabled={loadingTimes || !rescheduleDate || !rescheduleDeliveryType}
                 >
                   <option value="">Selecione um horário</option>
                   {availableTimes.map((time) => (
@@ -531,15 +549,15 @@ const ApprovalDashboard = () => {
                     </option>
                   ))}
                 </select>
-                {rescheduleDate && availableTimes.length === 0 && !loadingTimes && (
-                  <p className="text-sm text-red-500 mt-1">Nenhum horário disponível para esta data</p>
+                {rescheduleDate && rescheduleDeliveryType && availableTimes.length === 0 && !loadingTimes && (
+                  <p className="text-sm text-red-500 mt-1">Nenhum horário disponível para esta data e tipo de entrega</p>
                 )}
               </div>
               <div className="flex gap-2">
                 <Button 
                   onClick={() => currentRequestId && handleReschedule(currentRequestId)}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
-                  disabled={sendingEmail === currentRequestId || !rescheduleDate || !rescheduleTime}
+                  disabled={sendingEmail === currentRequestId || !rescheduleDate || !rescheduleTime || !rescheduleDeliveryType}
                 >
                   <CalendarDays className="h-4 w-4 mr-2" />
                   {sendingEmail === currentRequestId ? 'Reagendando...' : 'Confirmar Reagendamento'}

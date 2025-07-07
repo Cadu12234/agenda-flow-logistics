@@ -17,12 +17,20 @@ interface SchedulingFormProps {
   selectedTime: string;
   setSelectedTime: (time: string) => void;
   availableTimes: string[];
+  deliveryType: string;
+  onDeliveryTypeChange: (deliveryType: string) => void;
 }
 
-const SchedulingForm = ({ selectedDate, selectedTime, setSelectedTime, availableTimes }: SchedulingFormProps) => {
+const SchedulingForm = ({ 
+  selectedDate, 
+  selectedTime, 
+  setSelectedTime, 
+  availableTimes, 
+  deliveryType, 
+  onDeliveryTypeChange 
+}: SchedulingFormProps) => {
   const [supplierName, setSupplierName] = useState<string>("");
   const [vehicleType, setVehicleType] = useState<string>("");
-  const [deliveryType, setDeliveryType] = useState<string>("");
   const [observations, setObservations] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -75,7 +83,7 @@ const SchedulingForm = ({ selectedDate, selectedTime, setSelectedTime, available
       setSelectedTime("");
       setSupplierName("");
       setVehicleType("");
-      setDeliveryType("");
+      onDeliveryTypeChange("");
       setObservations("");
     } catch (error: any) {
       console.error('Error creating schedule:', error);
@@ -105,6 +113,20 @@ const SchedulingForm = ({ selectedDate, selectedTime, setSelectedTime, available
         />
       </div>
 
+      <div className="space-y-2">
+        <Label>Tipo de Entrega *</Label>
+        <Select value={deliveryType} onValueChange={onDeliveryTypeChange}>
+          <SelectTrigger className="border-gray-300 focus:border-green-500">
+            <SelectValue placeholder="Selecione o tipo de entrega" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="materias-primas">Matérias-primas</SelectItem>
+            <SelectItem value="inflamavel">Inflamável</SelectItem>
+            <SelectItem value="outros">Outros</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {selectedTime && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center gap-2 text-blue-800">
@@ -114,7 +136,7 @@ const SchedulingForm = ({ selectedDate, selectedTime, setSelectedTime, available
             </span>
           </div>
           <div className="text-sm text-blue-600 mt-1">
-            {selectedDate && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+            {selectedDate && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} - {deliveryType}
           </div>
         </div>
       )}
@@ -131,20 +153,6 @@ const SchedulingForm = ({ selectedDate, selectedTime, setSelectedTime, available
             <SelectItem value="caminhao-medio">Caminhão Médio</SelectItem>
             <SelectItem value="caminhao-grande">Caminhão Grande</SelectItem>
             <SelectItem value="carreta">Carreta</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Tipo de Entrega *</Label>
-        <Select value={deliveryType} onValueChange={setDeliveryType}>
-          <SelectTrigger className="border-gray-300 focus:border-green-500">
-            <SelectValue placeholder="Selecione o tipo de entrega" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="materias-primas">Matérias-primas</SelectItem>
-            <SelectItem value="inflamavel">Inflamável</SelectItem>
-            <SelectItem value="outros">Outros</SelectItem>
           </SelectContent>
         </Select>
       </div>
